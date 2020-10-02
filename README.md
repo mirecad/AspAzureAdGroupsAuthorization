@@ -20,7 +20,7 @@ You need access to Azure AD to register your application and check ids of groups
 3. In *API permissions* tab, add permission `Microsoft Graph` -> `GroupMember.Read.All`. `User.Read` is present by default. Don't forget to grant admin consent.
 
 Fill in information about your app into `AzureAD` section of `appsettings.json` file.
-```
+```json
 "AzureAD": {
     "Instance": "https://login.microsoftonline.com/",
     "Domain": "<your domain>",
@@ -33,7 +33,7 @@ You would want to place your secret somewhere safer in production application.
 
 ### Assign ASP.NET roles to your Azure AD groups
 Find guid of your Azure AD groups. In the `AuthorizationGroups` section of `appsettings.json` file replace key-value pairs with group id as key and target role as value. You can add as many as you want.
-```
+```json
   "AuthorizationGroups": {
     "5b99527f-947b-4e8d-aad5-404f8d39008c": "examplerole1",
     "2bd89580-1d95-4a9a-98c2-a7a150168cba": "examplerole2"
@@ -47,7 +47,7 @@ There are 3 endpoints:
 
 In `Startup.cs` modify `{ Roles = "examplerole1" }` to match one of roles specified in previous step.
 
-```
+```csharp
 app.UseEndpoints(endpoints =>
   {
       endpoints.MapGet("/", async context =>
@@ -73,11 +73,11 @@ app.UseEndpoints(endpoints =>
 
 ### Azure AD authentication
 I used [Microsoft.AspNetCore.Authentication.AzureAD.UI](https://www.nuget.org/packages/Microsoft.AspNetCore.Authentication.AzureAD.UI/3.0.0) NuGet package. `Startup.cs` file changes:
-```
+```csharp
 services.AddAuthentication(AzureADDefaults.AuthenticationScheme)
     .AddAzureAD(options => Configuration.Bind("AzureAD", options));
 ```
-```
+```csharp
 app.UseAuthentication();
 app.UseAuthorization();
 ```
@@ -85,7 +85,7 @@ This package takes care of setting up Open Id Connect and Cookies.
 
 ### Graph API
 Class `GraphService.cs` takes care of all operations against Graph API. Method `CheckMemberGroupsAsync` gets collection of group ids and returns only ids, that user is member of. This is done by [CheckMemberGroups](https://docs.microsoft.com/en-us/graph/api/user-checkmembergroups?view=graph-rest-1.0&tabs=csharp) Graph API method.
-```
+```csharp
 public async Task<IEnumerable<string>> CheckMemberGroupsAsync(IEnumerable<string> groupIds)
 {
     //You can check up to a maximum of 20 groups per request (see graph api doc).
@@ -102,7 +102,7 @@ public async Task<IEnumerable<string>> CheckMemberGroupsAsync(IEnumerable<string
 }
 ```
 Information about which user groups to check is taken from user context. That's why `GraphServiceClient` must be created on behalf of user with it's token. I've create factory method `CreateOnBehalfOfUserAsync` for this purpose.
-```
+```csharp
 public static async Task<GraphService> CreateOnBehalfOfUserAsync(string userToken, IConfiguration configuration)
 {
     var clientApp = ConfidentialClientApplicationBuilder
@@ -134,7 +134,7 @@ OpenId exposes `OnTokenValidated` event. We can use returned token before authen
 * Add these claims to current user.
 
 **Added claims are stored in cookie, so other requests do not trigger this event.**
-```
+```csharp
 services.Configure<OpenIdConnectOptions>(AzureADDefaults.OpenIdScheme, options =>
     {
         options.Events = new OpenIdConnectEvents
